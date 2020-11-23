@@ -72,6 +72,7 @@ spec:
               hostPort: 9101
         - image: registry.opensource.zalan.do/teapot/prometheus-node-exporter:v0.18.1
           args:
+            - --collector.textfile.directory=/prometheus-exporter-data
             - --collector.processes
             - --path.procfs=/host/proc
             - --path.sysfs=/host/sys
@@ -93,6 +94,9 @@ spec:
           securityContext:
             privileged: true
           volumeMounts:
+            - name: prometheus-node-exporter-volume
+              mountPath: /prometheus-exporter-data
+              readOnly: true
             - name: rootfs
               mountPath: /host
               readOnly: true
@@ -114,12 +118,31 @@ spec:
             - mountPath: /cursorfiles
               name: journald-reader-state
 {{- end }}
+        - image: registry.opensource.zalan.do/teapot/prometheus-node-exporter-txt-exporter:v0.0.4
+          name: prometheus-node-exporter-conntrack-exporter
+          resources:
+            requests:
+              cpu: {{.Cluster.ConfigItems.node_exporter_txt_exporter_cpu}}
+              memory: {{.Cluster.ConfigItems.node_exporter_txt_exporter_memory}}
+              ephemeral-storage: 256Mi
+            limits:
+              cpu: {{.Cluster.ConfigItems.node_exporter_txt_exporter_cpu}}
+              memory: {{.Cluster.ConfigItems.node_exporter_txt_exporter_memory}}
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - name: prometheus-node-exporter-volume
+              mountPath: /prometheus-exporter-data
+              readOnly: false
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 30
       volumes:
         - name: rootfs
           hostPath:
             path: /
+        - name: prometheus-node-exporter-volume
+           emptyDir:
+             medium: Memory
         - name: var-run
           hostPath:
             path: /var/run
